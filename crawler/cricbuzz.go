@@ -4,8 +4,10 @@ import (
 	pw "cricketNewsCrawler/playwright"
 	"fmt"
 	"github.com/playwright-community/playwright-go"
+	"html"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Cricbuzz struct {
@@ -45,7 +47,7 @@ func (c *Cricbuzz) FetchNewsList() ([]News, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(resp.Status())
+	log.Println(resp.Status())
 	if resp.Status() != http.StatusOK {
 		return nil, fmt.Errorf("http Status is : %d", resp.Status())
 	}
@@ -75,7 +77,7 @@ func (c *Cricbuzz) extractNewsList(page playwright.Page) ([]News, error) {
 	if err != nil {
 		log.Fatalf("獲取新聞數量失敗: %v", err)
 	}
-	fmt.Println(count)
+
 	for i := 0; i < count; i++ {
 		// 標題、連結
 		newsElement := newsElements.Nth(i)
@@ -134,5 +136,56 @@ func (c *Cricbuzz) extractCoverImages(page playwright.Page, newsList *[]News) er
 }
 
 func (c *Cricbuzz) FetchNewsDetail(url string) (string, error) {
-	return "", nil
+	pwClient, err := pw.NewPlaywright()
+	if err != nil {
+		return "", err
+	}
+	defer pwClient.Stop()
+
+	browser, err := pw.NewBrowser(pwClient)
+	if err != nil {
+		return "", err
+	}
+	defer browser.Close()
+
+	page, err := pw.NewPage(browser)
+	if err != nil {
+		return "", fmt.Errorf("建立分頁失敗: %w", err)
+	}
+
+	resp, err := page.Goto(url, playwright.PageGotoOptions{
+		//Timeout:   playwright.Float(3000),
+		WaitUntil: playwright.WaitUntilStateNetworkidle,
+	})
+	if err != nil {
+		return "", err
+	}
+	log.Println(resp.Status())
+	if resp.Status() != http.StatusOK {
+		return "", fmt.Errorf("http Status is : %d", resp.Status())
+	}
+
+	paras := page.Locator("p.cb-nws-para:not(:has(b))")
+	count, err := paras.Count()
+	if err != nil {
+		log.Fatalf("獲取新聞內文段落失敗: %v", err)
+	}
+
+	var builder strings.Builder
+	for i := 0; i < count; i++ {
+		text, err := paras.Nth(i).TextContent()
+		if err != nil {
+			continue
+		}
+
+		//  跳過空字串
+		if text == "" {
+			continue
+		}
+		builder.WriteString("<p>")
+		builder.WriteString(html.EscapeString(text))
+		builder.WriteString("</p>")
+	}
+
+	return builder.String(), nil
 }
