@@ -13,12 +13,14 @@ import (
 )
 
 type SportSkeeda struct {
-	Domain string
+	Domain  string
+	Headers map[string]string
 }
 
 func NewSportSkeeda() *SportSkeeda {
 	return &SportSkeeda{
-		Domain: "https://www.sportskeeda.com",
+		Domain:  "https://www.sportskeeda.com",
+		Headers: map[string]string{},
 	}
 }
 
@@ -35,7 +37,7 @@ func (s *SportSkeeda) FetchNewsList() ([]News, error) {
 	}
 	defer browser.Close()
 
-	page, err := pw.NewPage(browser)
+	page, err := pw.NewPage(browser, s.Headers)
 	if err != nil {
 		return nil, fmt.Errorf("建立分頁失敗: %w", err)
 	}
@@ -162,7 +164,7 @@ func (s *SportSkeeda) FetchNewsDetail(url string, news *News) error {
 	}
 	defer browser.Close()
 
-	page, err := pw.NewPage(browser)
+	page, err := pw.NewPage(browser, s.Headers)
 	if err != nil {
 		return fmt.Errorf("建立分頁失敗: %w", err)
 	}

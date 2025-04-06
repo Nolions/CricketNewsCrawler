@@ -11,12 +11,14 @@ import (
 )
 
 type Cricbuzz struct {
-	Domain string
+	Domain  string
+	Headers map[string]string
 }
 
 func NewCricbuzz() *Cricbuzz {
 	return &Cricbuzz{
-		Domain: "https://www.cricbuzz.com",
+		Domain:  "https://www.cricbuzz.com",
+		Headers: map[string]string{},
 	}
 }
 
@@ -33,7 +35,7 @@ func (c *Cricbuzz) FetchNewsList() ([]News, error) {
 	}
 	defer browser.Close()
 
-	page, err := pw.NewPage(browser)
+	page, err := pw.NewPage(browser, c.Headers)
 	if err != nil {
 		return nil, fmt.Errorf("建立分頁失敗: %w", err)
 	}
@@ -148,7 +150,7 @@ func (c *Cricbuzz) FetchNewsDetail(url string, news *News) error {
 	}
 	defer browser.Close()
 
-	page, err := pw.NewPage(browser)
+	page, err := pw.NewPage(browser, c.Headers)
 	if err != nil {
 		return fmt.Errorf("建立分頁失敗: %w", err)
 	}
