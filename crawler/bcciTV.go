@@ -6,6 +6,7 @@ import (
 	"github.com/playwright-community/playwright-go"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -126,5 +127,49 @@ func (s *BcciTV) parseTime(raw string) (time.Time, error) {
 }
 
 func (s *BcciTV) FetchNewsDetail(url string, news *News) error {
+	pwClient, err := pw.NewPlaywright()
+	if err != nil {
+		return err
+	}
+	defer pwClient.Stop()
+
+	browser, err := pw.NewBrowser(pwClient)
+	if err != nil {
+		return err
+	}
+	defer browser.Close()
+
+	page, err := pw.NewPage(browser, s.Headers)
+	if err != nil {
+		return fmt.Errorf("建立分頁失敗: %w", err)
+	}
+
+	resp, err := page.Goto(url, playwright.PageGotoOptions{
+		WaitUntil: playwright.WaitUntilStateNetworkidle,
+	})
+	if err != nil {
+		return err
+	}
+	log.Println(resp.Status())
+	if resp.Status() != http.StatusOK {
+		return fmt.Errorf("http Status is : %d", resp.Status())
+	}
+
+	// 因為新聞詳情中會有<table>屬性所以需要保留完整HTML，固不在進行篩選
+	html, err := page.Locator("div.repor-bottom.mt-3").InnerHTML()
+	if err != nil {
+		return fmt.Errorf("取得 HTML 失敗: %w", err)
+	}
+
+	// 清理不需要的HTML屬性
+	// 使用正則移除所有 style 屬性
+	re := regexp.MustCompile(`\s*style="[^"]*"`)
+	html = re.ReplaceAllString(html, "")
+	// 使用正則移除所有 td 標籤中width 屬性
+	re = regexp.MustCompile(`(<td[^>]*?)\s*width="[^"]*"`)
+	html = re.ReplaceAllString(html, "$1")
+
+	news.Content = strings.TrimSpace(html)
+
 	return nil
 }
