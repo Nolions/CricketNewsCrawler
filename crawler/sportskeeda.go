@@ -1,6 +1,7 @@
 package crawler
 
 import (
+	"cricketNewsCrawler/helper"
 	pw "cricketNewsCrawler/playwright"
 	"fmt"
 	"github.com/playwright-community/playwright-go"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type SportSkeeda struct {
@@ -147,6 +149,113 @@ func (s *SportSkeeda) extractSecondsNewsList(locator playwright.Locator, newsLis
 	return nil
 }
 
-func (s *SportSkeeda) FetchNewsDetail(url string) (string, error) {
-	return "", nil
+func (s *SportSkeeda) FetchNewsDetail(url string, news *News) error {
+	pwClient, err := pw.NewPlaywright()
+	if err != nil {
+		return err
+	}
+	defer pwClient.Stop()
+
+	browser, err := pw.NewBrowser(pwClient)
+	if err != nil {
+		return err
+	}
+	defer browser.Close()
+
+	page, err := pw.NewPage(browser)
+	if err != nil {
+		return fmt.Errorf("建立分頁失敗: %w", err)
+	}
+
+	// 打開網頁
+	resp, err := page.Goto(url, playwright.PageGotoOptions{
+		//Timeout:   playwright.Float(3000),
+		WaitUntil: playwright.WaitUntilStateNetworkidle,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Println(resp.Status())
+	if resp.Status() != http.StatusOK {
+		return fmt.Errorf("http Status is : %d", resp.Status())
+	}
+
+	// 發布時間
+	err = s.extractNewsPubTime(page, news)
+	if err != nil {
+		// TODO ERROR
+		//return nil
+	}
+
+	// 內文
+	err = s.extractNewsContent(page, news)
+	if err != nil {
+		// TODO ERROR
+		//return nil
+	}
+
+	return nil
+}
+
+// 取得發布時間
+func (s *SportSkeeda) extractNewsPubTime(page playwright.Page, news *News) error {
+	pubTimeEl := page.Locator("div.date-pub").First()
+	pubTime, err := pubTimeEl.GetAttribute("data-iso-string")
+	if err != nil {
+		return err
+	}
+
+	t, err := helper.CoverToTimestamp(pubTime, time.RFC3339)
+	if err != nil {
+		return err
+	}
+	news.PubDate = t
+
+	return nil
+}
+
+// 取得內文
+func (s *SportSkeeda) extractNewsContent(page playwright.Page, news *News) error {
+	locators := page.Locator("p[data-idx]")
+	count, err := locators.Count()
+	if err != nil {
+		return fmt.Errorf("獲取 <p data-idx> 數量失敗: %w", err)
+	}
+
+	var builder strings.Builder
+	for i := 0; i < count; i++ {
+		el := locators.Nth(i)
+
+		// 要排除區塊
+		skipParentCheck := el.Locator(`xpath=ancestor::div[contains(@class, 'post-author-info-parent') or contains(@class, 'bottom-tagline') or contains(@class, 'scrollable-content-holder')]`)
+		parentCount, err := skipParentCheck.Count()
+		if err != nil {
+			return fmt.Errorf("檢查父層失敗: %w", err)
+		}
+		if parentCount > 0 {
+			continue
+		}
+
+		text, err := el.TextContent()
+		if err != nil {
+			log.Printf("⚠️ 第 %d 個 <p> 抓取失敗: %v", i, err)
+			continue
+		}
+		if strings.TrimSpace(text) == "" {
+			continue
+			//result = append(result, strings.TrimSpace(text))
+		}
+
+		if text == "" {
+			continue
+		}
+		builder.WriteString("<p>")
+		builder.WriteString(strings.TrimSpace(text))
+		builder.WriteString("</p>")
+	}
+
+	news.Content = builder.String()
+
+	return nil
 }
