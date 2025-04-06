@@ -13,5 +13,5 @@ type News struct {
 
 type NewsCrawler interface {
 	FetchNewsList() ([]News, error)
-	FetchNewsDetail(url string) (string, error)
+	FetchNewsDetail(url string, news *News) error
 }

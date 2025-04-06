@@ -135,22 +135,22 @@ func (c *Cricbuzz) extractCoverImages(page playwright.Page, newsList *[]News) er
 	return nil
 }
 
-func (c *Cricbuzz) FetchNewsDetail(url string) (string, error) {
+func (c *Cricbuzz) FetchNewsDetail(url string, news *News) error {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer pwClient.Stop()
 
 	browser, err := pw.NewBrowser(pwClient)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer browser.Close()
 
 	page, err := pw.NewPage(browser)
 	if err != nil {
-		return "", fmt.Errorf("建立分頁失敗: %w", err)
+		return fmt.Errorf("建立分頁失敗: %w", err)
 	}
 
 	resp, err := page.Goto(url, playwright.PageGotoOptions{
@@ -158,17 +158,17 @@ func (c *Cricbuzz) FetchNewsDetail(url string) (string, error) {
 		WaitUntil: playwright.WaitUntilStateNetworkidle,
 	})
 	if err != nil {
-		return "", err
+		return err
 	}
 	log.Println(resp.Status())
 	if resp.Status() != http.StatusOK {
-		return "", fmt.Errorf("http Status is : %d", resp.Status())
+		return fmt.Errorf("http Status is : %d", resp.Status())
 	}
 
 	paras := page.Locator("p.cb-nws-para:not(:has(b))")
 	count, err := paras.Count()
 	if err != nil {
-		log.Fatalf("獲取新聞內文段落失敗: %v", err)
+		return err
 	}
 
 	var builder strings.Builder
@@ -187,5 +187,7 @@ func (c *Cricbuzz) FetchNewsDetail(url string) (string, error) {
 		builder.WriteString("</p>")
 	}
 
-	return builder.String(), nil
+	news.Title = builder.String()
+
+	return nil
 }
