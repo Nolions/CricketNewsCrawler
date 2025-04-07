@@ -31,6 +31,8 @@ func NewBcciTV() *BcciTV {
 	}
 }
 
+// FetchNewsList
+// 新聞列表
 func (s *BcciTV) FetchNewsList() ([]News, error) {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {

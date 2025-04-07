@@ -24,6 +24,8 @@ func NewSportSkeeda() *SportSkeeda {
 	}
 }
 
+// FetchNewsList
+// 新聞列表
 func (s *SportSkeeda) FetchNewsList() ([]News, error) {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {

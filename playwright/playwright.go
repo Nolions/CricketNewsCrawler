@@ -45,10 +45,10 @@ func NewPage(browser playwright.Browser, hdrs map[string]string) (playwright.Pag
 	// 註冊捕捉請求的事件
 	//context.OnRequest(func(request playwright.Request) {
 	//	// 輸出請求的詳細信息
-	//	fmt.Println("捕捉到請求:")
-	//	fmt.Printf("請求 URL: %s\n", request.URL())
-	//	fmt.Printf("請求方法: %s\n", request.Method())
-	//	fmt.Printf("請求標頭: %v\n", request.Headers())
+	//	log.Println("捕捉到請求:")
+	//	log.Printf("請求 URL: %s\n", request.URL())
+	//	log.Printf("請求方法: %s\n", request.Method())
+	//	log.Printf("請求標頭: %v\n", request.Headers())
 	//})
 
 	page, err := context.NewPage()

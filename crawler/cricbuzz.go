@@ -22,6 +22,8 @@ func NewCricbuzz() *Cricbuzz {
 	}
 }
 
+// FetchNewsList
+// 新聞列表
 func (c *Cricbuzz) FetchNewsList() ([]News, error) {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
