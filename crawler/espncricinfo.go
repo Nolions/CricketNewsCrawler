@@ -156,6 +156,63 @@ func (s *ESPNCricinfo) parseTime(timeText string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("無法取得新聞發布時間")
 }
 
+// FetchNewsDetail
+// 取得內文
 func (s *ESPNCricinfo) FetchNewsDetail(url string, news *News) error {
+	pwClient, err := pw.NewPlaywright()
+	if err != nil {
+		return err
+	}
+	defer pwClient.Stop()
+
+	browser, err := pw.NewBrowser(pwClient)
+	if err != nil {
+		return err
+	}
+	defer browser.Close()
+
+	page, err := pw.NewPage(browser, s.Headers)
+	if err != nil {
+		return fmt.Errorf("建立分頁失敗: %w", err)
+	}
+
+	// 打開網頁
+	resp, err := page.Goto(url, playwright.PageGotoOptions{
+		Timeout:   playwright.Float(30000),
+		WaitUntil: playwright.WaitUntilStateLoad,
+	})
+	if err != nil {
+		return err
+	}
+	log.Println(resp.Status())
+	if resp.Status() != http.StatusOK {
+		return fmt.Errorf("http Status is : %d", resp.Status())
+	}
+
+	locators := page.Locator(`p[class*="ds-text-comfortable-l"]`)
+
+	count, err := locators.Count()
+	if err != nil {
+		return fmt.Errorf("新聞段落失敗: %w", err)
+	}
+
+	var builder strings.Builder
+	for i := 0; i < count; i++ {
+		locator := locators.Nth(i).Locator("div")
+		text, err := locator.TextContent()
+		if err != nil {
+			// TODO
+			continue
+		}
+		if text == "" {
+			continue
+		}
+
+		builder.WriteString("<p>")
+		builder.WriteString(text)
+		builder.WriteString("</p>")
+	}
+	news.Content = builder.String()
+
 	return nil
 }

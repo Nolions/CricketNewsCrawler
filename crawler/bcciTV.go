@@ -128,6 +128,8 @@ func (s *BcciTV) parseTime(raw string) (time.Time, error) {
 	return time.Parse(layout, raw)
 }
 
+// FetchNewsDetail
+// 取得內文
 func (s *BcciTV) FetchNewsDetail(url string, news *News) error {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {

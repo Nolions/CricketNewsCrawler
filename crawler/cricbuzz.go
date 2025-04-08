@@ -139,6 +139,8 @@ func (c *Cricbuzz) extractCoverImages(page playwright.Page, newsList *[]News) er
 	return nil
 }
 
+// FetchNewsDetail
+// 取得內文
 func (c *Cricbuzz) FetchNewsDetail(url string, news *News) error {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
