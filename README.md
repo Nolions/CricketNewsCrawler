@@ -13,7 +13,7 @@
 ### 目標網站
 
 - [x] https://www.cricbuzz.com/cricket-news
-- [ ] https://www.espncricinfo.com/cricket-news
-- [ ] https://sports.ndtv.com/cricket/news
+- [x] https://www.espncricinfo.com/cricket-news
+- [x] https://sports.ndtv.com/cricket/news
 - [x] https://www.sportskeeda.com/cricket
 - [x] https://www.bcci.tv/international/men/news
