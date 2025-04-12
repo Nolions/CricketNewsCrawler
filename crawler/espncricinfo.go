@@ -1,9 +1,9 @@
 package crawler
 
 import (
-	"cricketNewsCrawler/helper"
-	pw "cricketNewsCrawler/playwright"
 	"fmt"
+	"github.com/Nolions/CricketNewsCrawler/helper"
+	pw "github.com/Nolions/CricketNewsCrawler/playwright"
 	"github.com/playwright-community/playwright-go"
 	"net/http"
 	"strings"
