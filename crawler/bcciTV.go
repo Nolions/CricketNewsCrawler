@@ -4,7 +4,6 @@ import (
 	pw "cricketNewsCrawler/playwright"
 	"fmt"
 	"github.com/playwright-community/playwright-go"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -34,21 +33,25 @@ func NewBcciTV() *BcciTV {
 // FetchNewsList
 // 新聞列表
 func (s *BcciTV) FetchNewsList() ([]News, error) {
+	log.Info().Msg("Starting to fetch BCCI news list")
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
+		log.Println("Failed to initialize Playwright:", err)
 		return nil, err
 	}
 	defer pwClient.Stop()
 
 	browser, err := pw.NewBrowser(pwClient)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize Playwright")
 		return nil, err
 	}
 	defer browser.Close()
 
 	page, err := pw.NewPage(browser, s.Headers)
 	if err != nil {
-		return nil, fmt.Errorf("建立分頁失敗: %w", err)
+		log.Error().Err(err).Msg("Failed to start browser")
+		return nil, err
 	}
 
 	url := "https://www.bcci.tv/international/men/news"
@@ -58,23 +61,27 @@ func (s *BcciTV) FetchNewsList() ([]News, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Println(resp.Status())
+
+	log.Info().Int("status", resp.Status()).Msg("Page response status")
 	if resp.Status() != http.StatusOK {
-		return nil, fmt.Errorf("http Status is : %d", resp.Status())
+		log.Error().Err(err).Msg("Failed to create browser page")
+		return nil, err
 	}
 
 	els := page.Locator(".slick-track").First()
 	newsEls := els.Locator("div.video-content.position-relative.slick-slide.slick-cloned")
 	count, err := newsEls.Count()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to count news elements")
 		return nil, fmt.Errorf("獲取 <div class='slick-card'> 數量失敗: %w", err)
 	}
 
+	log.Info().Int("news_count", count).Msg("Number of news items found")
 	var newsList []News
 	for i := 0; i < count; i++ {
 		news, err := s.extractNewsItem(newsEls.Nth(i))
 		if err != nil {
-			log.Println("⚠️ 抓取單筆新聞失敗:", err)
+			log.Warn().Err(err).Int("index", i).Msg("Failed to extract single news item")
 			continue
 		}
 		newsList = append(newsList, news)
@@ -85,31 +92,36 @@ func (s *BcciTV) FetchNewsList() ([]News, error) {
 
 // 取得單筆新聞資訊
 func (s *BcciTV) extractNewsItem(locator playwright.Locator) (News, error) {
+	log.Info().Msg("extractNewsItem: Start")
 	el := locator.Locator("a").First()
 	title, err := el.GetAttribute("data-title")
 	if err != nil {
-		return News{}, fmt.Errorf("取得新聞標題錯誤: %w", err)
+		log.Error().Err(err).Msg("Failed to get title")
+		return News{}, err
 	}
 
 	link, err := el.GetAttribute("href")
 	if err != nil {
-		return News{}, fmt.Errorf("取得新聞詳情連結錯誤: %w", err)
+		log.Error().Err(err).Msg("Failed to get link")
+		return News{}, err
 	}
 
 	src, err := el.Locator("img").GetAttribute("src")
 	if err != nil {
-		return News{}, fmt.Errorf("取得新聞封面錯誤: %w", err)
+		log.Error().Err(err).Msg("Failed to get image src")
+		return News{}, err
 	}
 
 	timeEl := locator.Locator("ul li").First()
 	timeStr, err := timeEl.TextContent()
 	if err != nil {
-		log.Println("取得新聞發布時間錯誤: ", err)
+		log.Warn().Err(err).Msg("Failed to get publication time")
 		timeStr = ""
 	}
 
 	t, _ := s.parseTime(timeStr)
 
+	log.Info().Msg("extractNewsItem: Completed")
 	return News{
 		Title:   title,
 		Link:    link,
@@ -120,6 +132,7 @@ func (s *BcciTV) extractNewsItem(locator playwright.Locator) (News, error) {
 
 // 解析時間
 func (s *BcciTV) parseTime(raw string) (time.Time, error) {
+	log.Info().Str("raw", raw).Msg("parseTime: Start")
 	suffixes := []string{"st", "nd", "rd", "th"}
 	for _, s := range suffixes {
 		raw = strings.ReplaceAll(raw, s, "")
@@ -131,20 +144,24 @@ func (s *BcciTV) parseTime(raw string) (time.Time, error) {
 // FetchNewsDetail
 // 取得內文
 func (s *BcciTV) FetchNewsDetail(url string, news *News) error {
+	log.Info().Str("url", url).Msg("FetchNewsDetail: Start")
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize Playwright")
 		return err
 	}
 	defer pwClient.Stop()
 
 	browser, err := pw.NewBrowser(pwClient)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to start browser")
 		return err
 	}
 	defer browser.Close()
 
 	page, err := pw.NewPage(browser, s.Headers)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create browser page")
 		return fmt.Errorf("建立分頁失敗: %w", err)
 	}
 
@@ -152,9 +169,11 @@ func (s *BcciTV) FetchNewsDetail(url string, news *News) error {
 		WaitUntil: playwright.WaitUntilStateNetworkidle,
 	})
 	if err != nil {
+		log.Error().Err(err).Msg("Page navigation failed")
 		return err
 	}
-	log.Println(resp.Status())
+
+	log.Info().Int("status", resp.Status()).Msg("Page response status")
 	if resp.Status() != http.StatusOK {
 		return fmt.Errorf("http Status is : %d", resp.Status())
 	}
@@ -162,6 +181,7 @@ func (s *BcciTV) FetchNewsDetail(url string, news *News) error {
 	// 因為新聞詳情中會有<table>屬性所以需要保留完整HTML，固不在進行篩選
 	html, err := page.Locator("div.repor-bottom.mt-3").InnerHTML()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to get HTML content")
 		return fmt.Errorf("取得 HTML 失敗: %w", err)
 	}
 
@@ -175,5 +195,6 @@ func (s *BcciTV) FetchNewsDetail(url string, news *News) error {
 
 	news.Content = strings.TrimSpace(html)
 
+	log.Info().Msg("FetchNewsDetail: Completed")
 	return nil
 }

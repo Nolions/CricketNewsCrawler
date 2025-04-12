@@ -5,7 +5,6 @@ import (
 	pw "cricketNewsCrawler/playwright"
 	"fmt"
 	"github.com/playwright-community/playwright-go"
-	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -27,6 +26,7 @@ func NewSportSkeeda() *SportSkeeda {
 // FetchNewsList
 // 新聞列表
 func (s *SportSkeeda) FetchNewsList() ([]News, error) {
+	log.Info().Msg("Fetching news list from SportSkeeda")
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
 		return nil, err
@@ -35,13 +35,15 @@ func (s *SportSkeeda) FetchNewsList() ([]News, error) {
 
 	browser, err := pw.NewBrowser(pwClient)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize Playwright client")
 		return nil, err
 	}
 	defer browser.Close()
 
 	page, err := pw.NewPage(browser, s.Headers)
 	if err != nil {
-		return nil, fmt.Errorf("建立分頁失敗: %w", err)
+		log.Error().Err(err).Msg("Failed to initialize browser")
+		return nil, err
 	}
 
 	url := "https://www.sportskeeda.com/cricket"
@@ -51,9 +53,11 @@ func (s *SportSkeeda) FetchNewsList() ([]News, error) {
 		WaitUntil: playwright.WaitUntilStateNetworkidle,
 	})
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to create new page")
 		return nil, err
 	}
-	log.Println(resp.Status())
+
+	log.Info().Int("status", resp.Status()).Msg("Page response status")
 	if resp.Status() != http.StatusOK {
 		return nil, fmt.Errorf("http Status is : %d", resp.Status())
 	}
@@ -80,11 +84,13 @@ func (s *SportSkeeda) extractMainNewsList(locator playwright.Locator, newsList *
 		title := newsEl.Locator("a.feed-item-cta")
 		titleText, err := title.TextContent()
 		if err != nil {
-			return fmt.Errorf("⚠️ 第 %d 條新聞標題抓取失敗或為空: %v", i, err)
+			log.Error().Err(err).Int("index", i).Msg("Failed to fetch title text for main news")
+			return err
 		}
 		link, err := title.GetAttribute("href")
 		if err != nil {
-			return fmt.Errorf("⚠️ 第 %d 條新聞連結抓取失敗或為空: %v", i, err)
+			log.Error().Err(err).Int("index", i).Msg("Failed to fetch news link for main news")
+			return err
 		}
 
 		news.Title = titleText
@@ -94,7 +100,8 @@ func (s *SportSkeeda) extractMainNewsList(locator playwright.Locator, newsList *
 		noscript := newsEl.Locator("noscript")
 		html, err := noscript.InnerHTML()
 		if err != nil {
-			return fmt.Errorf("第 %d 條 noscript 取得失敗: %v", i, err)
+			log.Error().Err(err).Int("index", i).Msg("Failed to fetch noscript HTML for main news")
+			return err
 		}
 
 		re := regexp.MustCompile(`<img[^>]+alt="([^"]+)"[^>]+src="([^"]+)"`)
@@ -115,7 +122,7 @@ func (s *SportSkeeda) extractMainNewsList(locator playwright.Locator, newsList *
 func (s *SportSkeeda) extractSecondsNewsList(locator playwright.Locator, newsList *[]News) error {
 	count, err := locator.Count()
 	if err != nil {
-		log.Fatalf("獲取次新聞數量失敗: %v", err)
+		log.Error().Err(err).Msg("Failed to get count of secondary news elements")
 		return fmt.Errorf("❌ 無法取得次新聞數量: %w", err)
 	}
 
@@ -126,20 +133,23 @@ func (s *SportSkeeda) extractSecondsNewsList(locator playwright.Locator, newsLis
 		title := newsEl.Locator("a.feed-item-cta")
 		titleText, err := title.TextContent()
 		if err != nil {
-			return fmt.Errorf("❌ 第 %d 條新聞標題抓取失敗或為空: %w", i, err)
+			log.Error().Err(err).Int("index", i).Msg("Failed to fetch title text for secondary news")
+			return err
 		}
 		news.Title = titleText
 
 		link, err := title.GetAttribute("href")
 		if err != nil || strings.TrimSpace(link) == "" {
-			return fmt.Errorf("❌ 第 %d 條新聞連結抓取失敗或為空: %w", i, err)
+			log.Error().Err(err).Int("index", i).Msg("Failed to fetch news link for secondary news")
+			return err
 		}
 		news.Link = link
 
 		noscript := newsEl.Locator("noscript")
 		html, err := noscript.InnerHTML()
 		if err != nil {
-			return fmt.Errorf("❌ 第 %d 條新聞 noscript 抓取失敗: %w", i, err)
+			log.Error().Err(err).Int("index", i).Msg("Failed to fetch noscript HTML for secondary news")
+			return err
 		}
 		re := regexp.MustCompile(`<img[^>]+src="([^"]+)"`)
 		match := re.FindStringSubmatch(html)
@@ -156,19 +166,22 @@ func (s *SportSkeeda) extractSecondsNewsList(locator playwright.Locator, newsLis
 func (s *SportSkeeda) FetchNewsDetail(url string, news *News) error {
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize Playwright client")
 		return err
 	}
 	defer pwClient.Stop()
 
 	browser, err := pw.NewBrowser(pwClient)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to initialize browser")
 		return err
 	}
 	defer browser.Close()
 
 	page, err := pw.NewPage(browser, s.Headers)
 	if err != nil {
-		return fmt.Errorf("建立分頁失敗: %w", err)
+		log.Error().Err(err).Msg("Failed to create new page")
+		return err
 	}
 
 	// 打開網頁
@@ -177,10 +190,11 @@ func (s *SportSkeeda) FetchNewsDetail(url string, news *News) error {
 		WaitUntil: playwright.WaitUntilStateNetworkidle,
 	})
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to go to URL")
 		return err
 	}
 
-	log.Println(resp.Status())
+	log.Info().Int("status", resp.Status()).Msg("Page response status")
 	if resp.Status() != http.StatusOK {
 		return fmt.Errorf("http Status is : %d", resp.Status())
 	}
@@ -207,11 +221,13 @@ func (s *SportSkeeda) extractNewsPubTime(page playwright.Page, news *News) error
 	pubTimeEl := page.Locator("div.date-pub").First()
 	pubTime, err := pubTimeEl.GetAttribute("data-iso-string")
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to fetch publication time")
 		return err
 	}
 
 	t, err := helper.CoverToTimestamp(pubTime, time.RFC3339)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to fetch publication time")
 		return err
 	}
 	news.PubDate = t
@@ -224,7 +240,8 @@ func (s *SportSkeeda) extractNewsContent(page playwright.Page, news *News) error
 	locators := page.Locator("p[data-idx]")
 	count, err := locators.Count()
 	if err != nil {
-		return fmt.Errorf("獲取 <p data-idx> 數量失敗: %w", err)
+		log.Error().Err(err).Msg("Failed to get the count of paragraphs")
+		return err
 	}
 
 	var builder strings.Builder
@@ -235,18 +252,21 @@ func (s *SportSkeeda) extractNewsContent(page playwright.Page, news *News) error
 		skipParentCheck := el.Locator(`xpath=ancestor::div[contains(@class, 'post-author-info-parent') or contains(@class, 'bottom-tagline') or contains(@class, 'scrollable-content-holder')]`)
 		parentCount, err := skipParentCheck.Count()
 		if err != nil {
-			return fmt.Errorf("檢查父層失敗: %w", err)
+			log.Error().Int("index", i).Err(err).Msg("Failed to check parent elements")
+			return err
 		}
 		if parentCount > 0 {
+			log.Warn().Int("index", i).Msg("Skipped <p> due to parent exclusion")
 			continue
 		}
 
 		text, err := el.TextContent()
 		if err != nil {
-			log.Printf("⚠️ 第 %d 個 <p> 抓取失敗: %v", i, err)
+			log.Warn().Err(err).Int("index", i).Msg("Failed to fetch text content")
 			continue
 		}
 		if strings.TrimSpace(text) == "" {
+			log.Warn().Int("index", i).Msg("Skipped empty paragraph text")
 			continue
 			//result = append(result, strings.TrimSpace(text))
 		}

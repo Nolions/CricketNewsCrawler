@@ -1,6 +1,10 @@
 package crawler
 
-import "time"
+import (
+	"github.com/rs/zerolog"
+	"os"
+	"time"
+)
 
 type News struct {
 	Title   string
@@ -15,3 +19,5 @@ type NewsCrawler interface {
 	FetchNewsList() ([]News, error)
 	FetchNewsDetail(url string, news *News) error
 }
+
+var log = zerolog.New(os.Stdout).With().Timestamp().Logger()
