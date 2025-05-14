@@ -49,8 +49,8 @@ func (s *SportSkeeda) FetchNewsList() ([]News, error) {
 	url := "https://www.sportskeeda.com/cricket"
 	// 打開網頁
 	resp, err := page.Goto(url, playwright.PageGotoOptions{
-		//Timeout:   playwright.Float(3000),
-		WaitUntil: playwright.WaitUntilStateNetworkidle,
+		Timeout:   playwright.Float(60000),
+		WaitUntil: playwright.WaitUntilStateLoad,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create new page")
@@ -95,7 +95,6 @@ func (s *SportSkeeda) extractMainNewsList(locator playwright.Locator, newsList *
 
 		news.Title = titleText
 		news.Link = s.Domain + link
-
 		// 找 noscript 元素
 		noscript := newsEl.Locator("noscript")
 		html, err := noscript.InnerHTML()
@@ -143,7 +142,7 @@ func (s *SportSkeeda) extractSecondsNewsList(locator playwright.Locator, newsLis
 			log.Error().Err(err).Int("index", i).Msg("Failed to fetch news link for secondary news")
 			return err
 		}
-		news.Link = link
+		news.Link = s.Domain + link
 
 		noscript := newsEl.Locator("noscript")
 		html, err := noscript.InnerHTML()
