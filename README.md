@@ -1,16 +1,90 @@
 # CricketNewsCrawler
 
-爬蟲練習，目標是以各種模擬瀏覽器行為套件(EX:playwright、chromedp或selenium)，並最好以無頭瀏覽器的方式去爬取資料。
+爬取下面四個網站的板球新聞
 
-預計要爬取頁面與內文如下：
-1. 從新聞列表頁面中那道新聞標題、介紹(描述)、封面與時間等資訊
-2. 從新聞詳情頁面中到內文，其中內文只需要拿到文字內文，圖片或表格等資訊都不需要，另外依照內文分段用<p></p>進行分段處理。
+1. [cricbuzz](https://www.cricbuzz.com/cricket-news)
+2. [espncricinfo](https://www.espncricinfo.com/cricket-news)
+3. [ndtv](https://sports.ndtv.com/cricket/news)
+4. [sportskeeda](https://www.sportskeeda.com/cricket)
+5. [bcci](https://www.bcci.tv/international/men/news)
 
-然後初步只針對第一是時間載入的頁面進行爬取，部分需要透過點擊行為去觸發載入更過資訊等後續再行研究。
+## use
 
-## Other
+***取得/下載套件***
 
-### 目標網站
+```bash
+go get github.com/Nolions/CricketNewsCrawler@latest
+```
+
+### code illustration
+
+### Method
+
+***取得新聞列表***
+
+FetchNewsList() ([]News, error)
+
+***取得單一新聞內文***
+
+FetchNewsDetail(url string, news *News) error
+
+| 參數   | 說明       |
+|------|----------|
+| url  | 新聞詳細業面連結 |
+| news |          |
+
+> 不同物件的FetchNewsList()與FetchNewsDetail()不能混用，
+> EX: SportSkeeda.FetchNewsList()取得的新聞詳情頁的連結就只能透過SportSkeeda.FetchNewsDetail()取得取新聞內文
+
+#### News 結構
+
+| 參數      | 型態        | 說明       |
+|---------|-----------|----------|
+| Title   | string    | 新聞標題     |
+| Link    | string    | 新聞詳細頁面連結 |
+| Cover   | string    | 新聞封面     |
+| Desc    | string    | 新聞描述     |
+| PubDate | time.Time | 新聞發布日期   |
+
+ 
+### example
+
+***建立Cricbuzz爬蟲實例***
+
+```go
+cricbuzz := crawler.NewCricbuzz()
+```
+
+***取得Cricbuzz網站中新聞列表***
+
+```go
+newsList, err := cricbuzz.FetchNewsList()
+if err != nil {
+    log.Fatalf("爬取新聞失敗: %v", err)
+} else {
+//顯示結果
+    for i, n := range newsList {
+        fmt.Printf("新聞 %d: %s\nLink: %s\nDesc: %s\nCover: %s\n\n", i+1, n.Title, n.Link, n.Desc, n.Cover)
+    }
+}
+
+
+```
+
+***取得指定頁面新聞內文***
+
+```go
+news := crawler.News{}
+err := cricbuzz.FetchNewsDetail(" https://www.cricbuzz.com/cricket-news/134344/ipl-2025-to-resume-on-may-17-final-on-june-3", &news)
+if err != nil {
+    log.Fatalf("爬取新聞內文失敗: %v", err)
+} else {
+    fmt.Println(news)
+}
+
+```
+
+## Status
 
 - [x] [cricbuzz](https://www.cricbuzz.com/cricket-news)
 - [x] [espncricinfo](https://www.espncricinfo.com/cricket-news)
