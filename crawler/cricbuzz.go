@@ -7,6 +7,7 @@ import (
 	"html"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Cricbuzz struct {
@@ -15,9 +16,17 @@ type Cricbuzz struct {
 }
 
 func NewCricbuzz() *Cricbuzz {
+	headers := map[string]string{
+		"sec-ch-ua":                 `"Chromium";v="133", "Not(A:Brand";v="99"`,
+		"sec-ch-ua-mobile":          "?0",
+		"sec-ch-ua-platform":        `"macOS"`,
+		"upgrade-insecure-requests": "1",
+		"user-agent":                "lla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+	}
+
 	return &Cricbuzz{
 		Domain:  "https://www.cricbuzz.com",
-		Headers: map[string]string{},
+		Headers: headers,
 	}
 }
 
@@ -48,8 +57,8 @@ func (c *Cricbuzz) FetchNewsList() ([]News, error) {
 	url := "https://www.cricbuzz.com/cricket-news"
 	// 打開網頁
 	resp, err := page.Goto(url, playwright.PageGotoOptions{
-		//Timeout:   playwright.Float(3000),
-		WaitUntil: playwright.WaitUntilStateNetworkidle,
+		Timeout:   playwright.Float(60000),
+		WaitUntil: playwright.WaitUntilStateLoad,
 	})
 	if err != nil {
 		log.Error().Err(err).Str("url", url).Msg("failed to navigate to news list page")
@@ -60,10 +69,35 @@ func (c *Cricbuzz) FetchNewsList() ([]News, error) {
 		return nil, fmt.Errorf("http Status is : %d", resp.Status())
 	}
 
+	newsLocator := page.Locator(".cb-nws-intr")
+	err = newsLocator.First().WaitFor(playwright.LocatorWaitForOptions{
+		Timeout: playwright.Float(20000),
+	})
+
+	if err != nil {
+		log.Error().Err(err).Str("url", url).Msgf("initial news items not found: %v", err)
+		return nil, err
+	}
+
+	newsLocator = page.Locator(".cb-nws-intr")
+	err = newsLocator.First().WaitFor(playwright.LocatorWaitForOptions{
+		Timeout: playwright.Float(20000),
+	})
+	if err != nil {
+		log.Error().Err(err).Str("url", url).Msgf("initial news items not found: %v", err)
+		return nil, err
+	}
+
 	newsList, err := c.extractNewsList(page)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to extract news list")
 		return nil, err
+	}
+	for i := 0; i < 10; i++ {
+		if _, err := page.Evaluate(`window.scrollBy(0, window.innerHeight);`); err != nil {
+			return nil, err
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// 提取封面圖片
@@ -155,6 +189,7 @@ func (c *Cricbuzz) extractCoverImages(page playwright.Page, newsList *[]News) er
 // FetchNewsDetail
 // 取得內文
 func (c *Cricbuzz) FetchNewsDetail(url string, news *News) error {
+	url = strings.TrimSpace(url)
 	log.Info().Str("url", url).Msg("Starting FetchNewsDetail")
 	pwClient, err := pw.NewPlaywright()
 	if err != nil {
@@ -176,8 +211,8 @@ func (c *Cricbuzz) FetchNewsDetail(url string, news *News) error {
 	}
 
 	resp, err := page.Goto(url, playwright.PageGotoOptions{
-		//Timeout:   playwright.Float(3000),
-		WaitUntil: playwright.WaitUntilStateNetworkidle,
+		Timeout:   playwright.Float(60000),
+		WaitUntil: playwright.WaitUntilStateLoad,
 	})
 	if err != nil {
 		log.Error().Err(err).Str("url", url).Msg("failed to navigate to news detail page")
@@ -187,6 +222,11 @@ func (c *Cricbuzz) FetchNewsDetail(url string, news *News) error {
 	log.Info().Int("status", resp.Status()).Str("url", url).Msg("detail page loaded")
 	if resp.Status() != http.StatusOK {
 		return fmt.Errorf("http Status is : %d", resp.Status())
+	}
+
+	for i := 0; i < 10; i++ {
+		page.Evaluate("window.scrollBy(0, document.body.scrollHeight)")
+		//page.WaitForTimeout(1000)
 	}
 
 	paras := page.Locator("p.cb-nws-para:not(:has(b))")

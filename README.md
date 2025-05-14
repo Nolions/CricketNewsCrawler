@@ -12,8 +12,8 @@
 
 ### 目標網站
 
-- [x] https://www.cricbuzz.com/cricket-news
-- [x] https://www.espncricinfo.com/cricket-news
-- [x] https://sports.ndtv.com/cricket/news
-- [x] https://www.sportskeeda.com/cricket
-- [x] https://www.bcci.tv/international/men/news
+- [x] [cricbuzz](https://www.cricbuzz.com/cricket-news)
+- [x] [espncricinfo](https://www.espncricinfo.com/cricket-news)
+- [x] [ndtv](https://sports.ndtv.com/cricket/news)
+- [x] [sportskeeda](https://www.sportskeeda.com/cricket)
+- [x] [bcci](https://www.bcci.tv/international/men/news)
