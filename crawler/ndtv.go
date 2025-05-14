@@ -16,7 +16,7 @@ type Ndtv struct {
 
 func NewNdTv() *Ndtv {
 	return &Ndtv{
-		Domain:  "https://www.bcci.tv",
+		Domain:  "https://sports.ndtv.com",
 		Headers: map[string]string{},
 	}
 }
